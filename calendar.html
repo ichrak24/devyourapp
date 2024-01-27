@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendar with Dates from JSON</title>
+    <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+        #calendar-container {
+            float: left;
+            margin: 50px;
+        }
+        .highlighted, .highlighted a {
+            background-color: red !important;
+            color: white !important;
+        }
+        #tariff-info-container {
+            margin-top: 20px;
+            padding: 10px;
+            display: none;
+            float: left;
+        }
+        .tariff-info {
+            margin-bottom: 10px;
+        }
+        .clear {
+            clear: both;
+        }
+        #hour {
+            text-align: CENTER;
+	    height: 50px;
+	    width: 100PX;
+	    background: #0100DD;
+	    color: #fff;
+	    line-height: 50px;
+        }
+        #visit-date {
+            text-align: left;
+        }
+        #tariff-details {
+            margin-top: 50px;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Your calendar container -->
+<div id="calendar-container"></div>
+
+<!-- Tariff information container -->
+<div id="tariff-info-container">
+    <div id="hour"></div>
+    <p>Nous vous invitons à choisir un nombre de tickets pour un tarif . Une fois votre commande finalisée nous vous invitons à cliquez sur ETAPE SUIVANTE.</p>
+    <br>
+    <div id="visit-date"></div>
+    <div id="tariff-details"></div>
+</div>
+<div class="clear"><div>
+
+<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+<script>
+    $(document).ready(function () {
+        // Initialize the datepicker
+        $("#calendar-container").datepicker({
+            showOtherMonths: true,
+            selectOtherMonths: true,
+            changeMonth: true,
+            changeYear: true,
+            showButtonPanel: true,
+            onSelect: function (dateText, inst) {
+                // Handle date selection here
+                fetchData().then(data => {
+                    const selectedDate = new Date(dateText);
+		    const event = data.dates.find(event => new Date(event.date).toDateString() === selectedDate.toDateString());
+		    $('#hour').empty();
+                    $('#visit-date').empty();
+                    if (event) {
+                        // Display tariff information
+                        $('#hour').append(event.heure);
+                        $('#visit-date').append("Début de la visite " + event.date + " à " + event.heure);
+                        const tariffInfoContainer = $("#tariff-info-container");
+                        const tariffDetails = $("#tariff-details");
+                        tariffDetails.empty();
+                        event.tarifs.forEach(tariff => {
+                            const selectLabel = $("<label for='" + tariff.id + "'>" + tariff.intitule + ": </label>");
+		            const quantityInput = $("<input type='number' min='1' max='30' value='0'>");
+                            const tariffInfo = $("<div class='tariff-info'></div>");
+                            tariffInfo.text(tariff.intitule + ": " + tariff.prix_ttc + " euros" );
+                            tariffInfo.append(selectLabel, " - ", quantityInput, " billet(s)");
+                            tariffDetails.append(tariffInfo);
+                        });
+
+                        // Show tariff information container
+                        tariffInfoContainer.show();
+                    } else {
+                        // Hide tariff information container if the date is not in the JSON data
+                        $("#tariff-info-container").hide();
+                    }
+                });
+            }
+        });
+
+        // Function to fetch JSON data from the file
+        async function fetchData() {
+            const response = await fetch('data.json');
+            const data = await response.json();
+            return data;
+        }
+
+        // Function to generate the calendar with events
+        function generateCalendarWithEvents() {
+            fetchData().then(data => {
+                const events = data.dates.map(event => ({
+                    date: new Date(event.date),
+                    title: 'Event',
+                }));
+
+                // Highlight dates with events in the calendar
+                $("#calendar-container").datepicker("option", "beforeShowDay", function (date) {
+                    const dateString = $.datepicker.formatDate('yy-mm-dd', date);
+                    const eventDates = events.map(event => event.date.toISOString().split('T')[0]);
+
+                    if (eventDates.includes(dateString)) {
+                        return [true, 'highlighted', 'Event'];
+                    }
+                    return [true, ''];
+                });
+            });
+        }
+
+        // Call the function to generate the calendar with events when the page loads
+        generateCalendarWithEvents();
+    });
+</script>
+
+</body>
+</html>
